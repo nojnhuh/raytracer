@@ -1,0 +1,2 @@
+# Raytracer
+This is an implementation of a basic raytracer in Rust. It is primarily a translation of a raytracer I wrote for a [school assignment](https://github.com/umn-huhnx025/csci-5607/blob/master/assignment2/final_project.md) from C++.
