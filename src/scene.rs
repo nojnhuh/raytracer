@@ -2,23 +2,27 @@ use std::f64::consts::PI;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufRead;
-use std::rc::Rc;
+use std::sync::Arc;
 
-use intersect::{Intersect, Sphere};
+use intersect::{Sphere, Triangle, Intersectable};
 use color::Color;
-use vector::Vector;
-use light::{Light, PointLight};
+use math::Vector;
+use light::{DirectionalLight, PointLight, Lightable};
+use bvh::{Axis, BVHNode};
+
 
 pub struct Scene {
     pub width: u32,
     pub height: u32,
     pub filename: String,
     pub background: Color,
+    pub ambient_light: Color,
     pub camera: Camera,
     pub canvas: Canvas,
-    pub shapes: Vec<Rc<Intersect>>,
-    pub lights: Vec<Rc<Light>>,
+    pub shapes: Vec<Intersectable>,
+    pub lights: Vec<Lightable>,
     pub max_depth: u32,
+    pub bvhroot: BVHNode,
 }
 
 pub struct Camera {
@@ -57,6 +61,11 @@ impl Scene {
             g: 0.,
             b: 0.,
         };
+        let mut ambient_light = Color {
+            r: 0.,
+            g: 0.,
+            b: 0.,
+        };
         let mut camera = Camera {
             pos: Vector {
                 x: 0.,
@@ -80,11 +89,12 @@ impl Scene {
             },
             ha: PI / 4.,
         };
-        let mut shapes: Vec<Rc<Intersect>> = Vec::new();
-        let mut lights: Vec<Rc<Light>> = Vec::new();
+        let mut shapes: Vec<Intersectable> = Vec::new();
+        let mut lights: Vec<Lightable> = Vec::new();
         let mut max_depth = 5;
 
         let mut current_material = Material::new();
+        let mut vertices: Vec<Vector> = Vec::new();
 
         let f = File::open(scene_file).expect("error");
         let file = BufReader::new(&f);
@@ -116,7 +126,7 @@ impl Scene {
                     //     "Made new sphere at {} {} {} with radius {}",
                     //     s.pos.x, s.pos.y, s.pos.z, s.r
                     // );
-                    shapes.push(Rc::new(s));
+                    shapes.push(Arc::new(s));
                 }
                 "background" => {
                     let r: f64 = l_iter.next().unwrap().parse().unwrap();
@@ -214,7 +224,8 @@ impl Scene {
                             b: tb,
                         },
                         ior: ior,
-                    }
+                    };
+                    // println!("Current material is {:?}", current_material);
                 }
                 "point_light" => {
                     let r = l_iter.next().unwrap().parse().unwrap();
@@ -227,8 +238,48 @@ impl Scene {
                         pos: Vector { x, y, z },
                         intensity: Color { r, g, b },
                     };
-                    lights.push(Rc::new(l));
+                    lights.push(Arc::new(l));
                     // println!("Added point light at ({}, {}, {}) with color ({}, {}, {})", x, y, z, r, g, b);
+                }
+                "directional_light" => {
+                    let r = l_iter.next().unwrap().parse().unwrap();
+                    let g = l_iter.next().unwrap().parse().unwrap();
+                    let b = l_iter.next().unwrap().parse().unwrap();
+                    let x = l_iter.next().unwrap().parse().unwrap();
+                    let y = l_iter.next().unwrap().parse().unwrap();
+                    let z = l_iter.next().unwrap().parse().unwrap();
+                    let l = DirectionalLight {
+                        dir: Vector { x, y, z },
+                        intensity: Color { r, g, b },
+                    };
+                    lights.push(Arc::new(l));
+                    // println!("Added directional light pointing at ({}, {}, {}) with color ({}, {}, {})", x, y, z, r, g, b);
+                }
+                "ambient_light" => {
+                    let r = l_iter.next().unwrap().parse().unwrap();
+                    let g = l_iter.next().unwrap().parse().unwrap();
+                    let b = l_iter.next().unwrap().parse().unwrap();
+                    ambient_light = Color { r, g, b };
+                }
+                "vertex" => {
+                    let x = l_iter.next().unwrap().parse().unwrap();
+                    let y = l_iter.next().unwrap().parse().unwrap();
+                    let z = l_iter.next().unwrap().parse().unwrap();
+                    let v = Vector { x, y, z };
+                    vertices.push(v);
+                }
+                "triangle" => {
+                    let v1: usize = l_iter.next().unwrap().parse().unwrap();
+                    let v2: usize = l_iter.next().unwrap().parse().unwrap();
+                    let v3: usize = l_iter.next().unwrap().parse().unwrap();
+                    let t = Triangle {
+                        v1: vertices[v1],
+                        v2: vertices[v2],
+                        v3: vertices[v3],
+                        mat: current_material,
+                    };
+                    shapes.push(Arc::new(t));
+                    // println!("Added triangle");
                 }
                 _ => continue,
             }
@@ -238,16 +289,19 @@ impl Scene {
             bottom: -(height as f64) / 2.,
             depth: (height as f64) / (2. * camera.ha.tan()),
         };
+        let bvhroot = BVHNode::new(&shapes, Axis::XAxis);
         Scene {
             width,
             height,
             filename,
             background,
+            ambient_light,
             camera,
             canvas,
             shapes,
             lights,
             max_depth,
+            bvhroot,
         }
     }
 }

@@ -1,9 +1,9 @@
 mod color;
-mod vector;
 mod scene;
-mod ray;
 mod light;
 mod intersect;
+mod math;
+mod bvh;
 pub mod raytracer;
 
 pub use self::raytracer::run;

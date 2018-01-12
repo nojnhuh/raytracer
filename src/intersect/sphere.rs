@@ -1,9 +1,8 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
-use intersect::{Hit, Intersect};
-use vector::Vector;
+use intersect::{Hit, Intersect, Intersectable};
+use math::{Ray, Vector, TMAX, TMIN};
 use scene::Material;
-use ray::{Ray, TMAX, TMIN};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Sphere {
@@ -12,13 +11,15 @@ pub struct Sphere {
     pub mat: Material,
 }
 
-impl Sphere {}
-
 impl Intersect for Sphere {
+    fn center(&self) -> Vector {
+        self.pos
+    }
+
     fn get_ray_intersection(&self, ray: Ray) -> Hit {
         // println!("Checking ray {:?}", ray);
         let t = TMAX;
-        let shape: Option<Rc<Intersect>> = Some(Rc::new(self.clone()));
+        let shape: Option<Intersectable> = Some(Arc::new(self.clone()));
         let hit = false;
         let mut hit = Hit { t, shape, hit, ray };
 
@@ -60,5 +61,16 @@ impl Intersect for Sphere {
 
     fn surface_normal(&self, point: Vector, _v: Vector) -> Vector {
         (point - self.pos).normalized()
+    }
+
+    fn get_extents(&self) -> [f64; 6] {
+        [
+            self.pos.x - self.r,
+            self.pos.x + self.r,
+            self.pos.y - self.r,
+            self.pos.y + self.r,
+            self.pos.z - self.r,
+            self.pos.z + self.r,
+        ]
     }
 }

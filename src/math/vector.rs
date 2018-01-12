@@ -9,9 +9,13 @@ pub struct Vector {
 }
 
 impl Vector {
-    // pub fn new() -> Vector {
-    //     Vector { 0., 0., 0. }
-    // }
+    pub fn new() -> Vector {
+        Vector {
+            x: 0.,
+            y: 0.,
+            z: 0.,
+        }
+    }
 
     pub fn magnitude(&self) -> f64 {
         (self.x.powf(2.) + self.y.powf(2.) + self.z.powf(2.)).sqrt()

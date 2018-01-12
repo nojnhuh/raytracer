@@ -1,12 +1,12 @@
 extern crate image;
 
 use std::path::Path;
-use std::rc::Rc;
+// use std::thread;
 
 use color::Color;
 use scene::Scene;
-use ray::{Ray, TMAX, TMIN};
-use intersect::Hit;
+use math::Ray;
+use intersect::{Hit, Intersect};
 
 pub fn run(scene_file: &String) {
     let rt = Raytracer::new(scene_file);
@@ -26,12 +26,13 @@ impl Raytracer {
 
     fn run(&self) {
         let mut i = image::RgbImage::new(self.scene.width, self.scene.height);
+        // let mut colors: [Color; ]
 
         for (x, y, pixel) in i.enumerate_pixels_mut() {
             // println!("Image x, y = {}, {}", x, y);
-            let c = self.get_color_for_pixel(x as f64, y as f64);
-            // println!("Color is {:?}", c);
-            *pixel = image::Rgb(c.to_u8_array());
+            // thread::spawn(move || {
+            *pixel = image::Rgb(self.get_color_for_pixel(x as f64, y as f64).to_u8_array());
+            // });
         }
 
         i.save(Path::new(&self.scene.filename))
@@ -69,15 +70,7 @@ impl Raytracer {
             self.apply_lighting_model(hit, current_depth)
         } else {
             // println!("Ray missed");
-            if current_depth == 1 {
-                self.scene.background
-            } else {
-                Color {
-                    r: 0.,
-                    g: 0.,
-                    b: 0.,
-                }
-            }
+            self.scene.background
         }
     }
 
@@ -86,7 +79,7 @@ impl Raytracer {
         let shape = hit.shape.unwrap();
         let mat = shape.get_material();
 
-        color += shape.get_material().amb * 0.25;
+        color += shape.get_material().amb * self.scene.ambient_light;
 
         let point_hit = hit.ray.find_point(hit.t);
         let v = (hit.ray.pos - point_hit).normalized();
@@ -152,22 +145,6 @@ impl Raytracer {
     }
 
     fn get_ray_intersection(&self, ray: Ray) -> Hit {
-        let mut t_best = TMAX;
-        let mut hit = false;
-        let mut shape = None;
-        for s in self.scene.shapes.iter() {
-            let h = s.get_ray_intersection(ray);
-            if h.t > TMIN && h.t < t_best {
-                t_best = h.t;
-                hit = true;
-                shape = Some(Rc::clone(s));
-            }
-        }
-        Hit {
-            t: t_best,
-            shape,
-            hit,
-            ray,
-        }
+        self.scene.bvhroot.get_ray_intersection(ray)
     }
 }

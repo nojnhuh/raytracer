@@ -1,7 +1,8 @@
-camera 0 0 -2 0 0 1 0 1 0 45
+#camera 0 0 0 0 0 1 0 1 0 45
 
-material 1 0 0 1 0 0 1 1 1 16 1 1 1 1
-sphere 0 0 4 1
+material 1 0 0 1 0 0 1 1 1 32 0 0 0 1
+sphere 0 0 4 2
 
-background 0.2 0.2 0.2
-max_depth 3
+#background 0.2 0.2 0.2
+ambient_light .3 .3 .3
+point_light 10 10 10 4 -3 1

@@ -1,17 +1,17 @@
 use math::Vector;
 use color::Color;
-use intersect::Intersectable;
 use light::Light;
+use intersect::Intersectable;
 
 #[derive(Copy, Clone, Debug)]
-pub struct PointLight {
-    pub pos: Vector,
+pub struct DirectionalLight {
+    pub dir: Vector,
     pub intensity: Color,
 }
 
-impl Light for PointLight {
-    fn position(&self) -> Vector {
-        self.pos
+impl Light for DirectionalLight {
+    fn l(&self, _point_hit: Vector) -> Vector {
+        self.dir.normalized() * -1.
     }
 
     fn compute_diffuse_component(
@@ -22,10 +22,7 @@ impl Light for PointLight {
     ) -> Color {
         let n = self.n(point_hit, v, shape_hit);
         let l = self.l(point_hit);
-        let distance_factor = (self.position() - point_hit).magnitude().powi(2);
-        // println!("Distance factor is {}", distance_factor);
-        let factor = n.dot(&l).max(0.) / distance_factor;
-        // println!("factor is {}", factor);
+        let factor = n.dot(&l).max(0.);
         shape_hit.get_material().dif * self.intensity * factor
     }
 
@@ -39,8 +36,7 @@ impl Light for PointLight {
         let r = self.r(point_hit, v, shape_hit);
         let v = self.v(point_hit, camera_pos);
         let mat = shape_hit.get_material();
-        let distance_factor = (self.position() - point_hit).magnitude().powi(2);
-        let factor = r.dot(&v).max(0.).powf(mat.ns) / distance_factor;
+        let factor = r.dot(&v).max(0.).powf(mat.ns);
         mat.spec * self.intensity * factor
     }
 }
